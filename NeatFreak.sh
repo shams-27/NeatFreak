@@ -221,63 +221,16 @@ yml|toml|xml|rb|go|rs|php|sql|kt|swift)                   SUBFOLDER="Code" ;;
     elif [[ "$DRY_RUN" == true ]]; then
         printf "  ${S2}~${R}   ${fi_icon}${S2}%-44s${R}  ${S2}→  %s${R}\n" "$display" "$SUBFOLDER"
     else
-        printf "  ${G1}›${R}   ${fi_icon}${W}%-44s${R}  ${S2}→${R}  ${fc}%s${R}\n" "$display" "$SUBFOLDER"
+        # Create folder if it doesn't exist
+        if [ ! -d "$DEST_DIR" ]; then
+            mkdir -p "$DEST_DIR"
+        fi
+        # Move the file
+        mv "$file" "$DEST_DIR/"
+        echo "Moved: $(basename "$file") -> /$SUBFOLDER"
     fi
 
-    if [[ "$DRY_RUN" == true ]]; then
-        (( skipped_count++ )) || true
-    elif $conflict; then
-        mkdir -p "$DEST_DIR"; mv "$file" "$DEST_FILE"
-        log "CONFLICT: $filename -> /$SUBFOLDER/$(basename "$DEST_FILE")"
-        (( moved_count++ )) || true
-        folder_counts["$SUBFOLDER"]=$(( ${folder_counts["$SUBFOLDER"]:-0} + 1 ))
-    else
-        mkdir -p "$DEST_DIR"; mv "$file" "$DEST_FILE"
-        log "Moved: $filename -> /$SUBFOLDER/$filename"
-        (( moved_count++ )) || true
-        folder_counts["$SUBFOLDER"]=$(( ${folder_counts["$SUBFOLDER"]:-0} + 1 ))
-    fi
 done
 
-ELAPSED=$(( $(date +%s) - TIME_START )); [[ $ELAPSED -lt 1 ]] && ELAPSED=1
-
-tput cuu 3
-tput el; draw_bar "$total" "$total"; printf "  ${G1}done${R}\n"
-tput el; printf "  ${S2}─${R}\n"
-tput el; printf "  ${G1}✓${R}   ${W}${BOLD}all files processed${R}  ${S2}(${ELAPSED}s)${R}\n"
-
-echo ""
-echo -e "  ${S3}$(printf '%.0s─' {1..48})${R}"
-
-if [[ "$DRY_RUN" == true ]]; then
-    echo -e "  ${BOLD}${W}summary${R}  ${S2}[${AMBER}DRY RUN${S2}]${R}"
-    echo -e "  ${S3}$(printf '%.0s─' {1..48})${R}"
-    echo -e "  ${S1}$skipped_count file(s) would be moved — nothing changed${R}"
-else
-    echo -e "  ${BOLD}${W}summary${R}"
-    echo -e "  ${S3}$(printf '%.0s─' {1..48})${R}"
-
-    fc_total=0
-    for k in "${!folder_counts[@]}"; do (( fc_total += folder_counts[$k] )) || true; done
-
-    for folder in $(for k in "${!folder_counts[@]}"; do
-        echo "${folder_counts[$k]} $k"
-    done | sort -rn | awk '{print $2}'); do
-        count=${folder_counts[$folder]}
-        fc="$(folder_color "$folder")"
-        fi_icon="$(folder_meta "$folder")"
-        bar_w=$(( (count * 20 + fc_total / 2) / fc_total ))
-        [[ $bar_w -eq 0 ]] && bar_w=1
-        minibar=""; for (( i=0; i<bar_w; i++ )); do minibar+="▪"; done
-        pct=$(( count * 100 / fc_total ))
-        printf "  ${fi_icon}${fc}%-16s${R}  ${BOLD}${W}%4d${R}  ${S2}%3d%%${R}  ${fc}%s${R}\n" \
-            "$folder" "$count" "$pct" "$minibar"
-    done
-
-    echo -e "  ${S3}$(printf '%.0s·' {1..48})${R}"
-    printf   "  ${S2}%-18s${R}  ${BOLD}${W}%4d${R}  ${S2}in ${ELAPSED}s${R}\n" "total moved" "$moved_count"
-    [[ $conflict_count -gt 0 ]] && printf "  ${AMBER}⚡ %d conflict(s) auto-renamed${R}\n" "$conflict_count"
-    echo -e "  ${S2}log   ${S1}$LOG_FILE${R}"
-fi
-
-echo ""
+echo "----------------------------------------"
+echo "Process complete!"
